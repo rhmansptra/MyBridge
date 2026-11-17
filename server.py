@@ -23,7 +23,8 @@ Endpoint:
   GET  /v1/worker/pending          -> daftar request belum diklaim
   POST /v1/worker/claim   {"id"}   -> klaim satu request (rename .claimed)
   POST /v1/worker/done    {"id","content"} -> tulis jawaban
-  GET  /v1/stats                    -> statistik + riwayat (butuh client key)
+  POST /v1/worker/quota   {"plan","used_pct","reset_at",...} -> simpan snapshot kuota
+  GET  /v1/stats                    -> statistik + riwayat + kuota (butuh client key)
   GET  /dashboard                  -> halaman dashboard (HTML)
 """
 import json
@@ -79,6 +80,8 @@ _RECENT = deque(maxlen=50)  # {id, received_at, question, answer, latency, model
 _TOTALS = {"total": 0, "ok": 0, "timeout": 0}
 _WORKER = {"last_heartbeat": 0.0, "last_pending": 0.0,
            "last_claim": 0.0, "last_done": 0.0}
+# Snapshot kuota Muse (dikirim reporter dari VM tiap 15 menit; in-memory).
+_QUOTA = {"data": None, "updated_at": 0.0}
 
 
 def _record(rid, req, answer, latency, pt, ct, status):
@@ -176,23 +179,38 @@ class H(BaseHTTPRequestHandler):
                 total = _TOTALS["total"]
                 ok = _TOTALS["ok"]
                 timeout = _TOTALS["timeout"]
-            lats = [r["latency"] for r in recent
-                    if r["status"] == "ok" and r["latency"] is not None]
+                quota = dict(_QUOTA["data"]) if _QUOTA["data"] else None
+                quota_updated_at = _QUOTA["updated_at"]
+            lats = sorted(r["latency"] for r in recent
+                          if r["status"] == "ok" and r["latency"] is not None)
             now = time.time()
 
             def _ago(ts):
                 return round(now - ts, 1) if ts else None
 
+            def _pct(sorted_vals, p):
+                if not sorted_vals:
+                    return None
+                i = min(len(sorted_vals) - 1, max(0, int(p * len(sorted_vals))))
+                return round(sorted_vals[i], 2)
+
+            rpm = sum(1 for r in recent if now - r["received_at"] <= 60)
             return self._json(200, {
                 "uptime_secs": round(now - STARTED_AT, 1),
                 "total": total, "ok": ok, "timeout": timeout,
+                "success_rate_pct": round(ok / total * 100, 1) if total else None,
                 "avg_latency_secs": round(sum(lats) / len(lats), 2) if lats else None,
+                "median_latency_secs": _pct(lats, 0.5),
+                "p95_latency_secs": _pct(lats, 0.95),
+                "rpm_last_60s": rpm,
                 "worker": {
                     "last_heartbeat_ago": _ago(_WORKER["last_heartbeat"]),
                     "last_pending_ago": _ago(_WORKER["last_pending"]),
                     "last_claim_ago": _ago(_WORKER["last_claim"]),
                     "last_done_ago": _ago(_WORKER["last_done"]),
                 },
+                "quota": quota,
+                "quota_updated_ago": _ago(quota_updated_at) if quota else None,
                 "recent": list(reversed(recent)),
             })
         if p == "/dashboard":
@@ -326,6 +344,22 @@ class H(BaseHTTPRequestHandler):
             cp = os.path.join(REQ_DIR, rid + ".claimed")
             if os.path.exists(cp):
                 os.remove(cp)
+            return self._json(200, {"ok": True})
+
+        if p == "/v1/worker/quota":
+            if not auth_ok(self, {WORKER_KEY}):
+                return self._err(401, "invalid worker key")
+            q = {
+                "plan": str(body.get("plan", ""))[:40],
+                "used_pct": body.get("used_pct"),
+                "reset_at": str(body.get("reset_at", ""))[:40],
+                "additional_used_pct": body.get("additional_used_pct"),
+                "additional_tokens_left": str(body.get("additional_tokens_left", ""))[:40],
+                "reported_at": body.get("reported_at"),
+            }
+            with _STATS_LOCK:
+                _QUOTA["data"] = q
+                _QUOTA["updated_at"] = time.time()
             return self._json(200, {"ok": True})
 
         return self._err(404, "not found")

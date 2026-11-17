@@ -52,12 +52,17 @@ free 5 GB/bulan; poll daemon ~0,4 GB/bulan, aman.
 ## Dashboard
 
 Setelah deploy, dashboard ada di `https://mybridge-xxxx.onrender.com/dashboard`:
-status server/worker/daemon, total request, rata-rata latensi, riwayat
-50 request terakhir, konsol tes chat, dan info API. Dashboard minta
-client key sekali (disimpan di browser saja) untuk membaca statistik —
-riwayat request bersifat pribadi, jangan bagikan key-nya. Statistik
-in-memory: hilang kalau server Render restart; riwayat panjang tetap
-ada di file `answers/` di VM lokal.
+**kuota Muse saat ini** (paket, % terpakai + bar progres, token tambahan,
+waktu reset + hitung mundur — diperbarui tiap 15 menit dari VM), kesehatan
+daemon/worker/server, total request, tingkat keberhasilan, rata-rata /
+median / P95 latensi, request per menit, grafik latensi 20 jawaban
+terakhir, riwayat 50 request terakhir, konsol tes chat, dan info API.
+Dashboard minta client key sekali (disimpan di browser saja) untuk
+membaca statistik — riwayat request bersifat pribadi, jangan bagikan
+key-nya. Statistik in-memory: hilang kalau server Render restart;
+riwayat panjang tetap ada di file `answers/` di VM lokal. Endpoint
+kuota: `POST /v1/worker/quota` (worker key) — dikirim reporter
+`quota-report.py` dari VM (cron tiap 15 menit).
 
 Server ini satu file Python portabel. Yang perlu diubah hanya
 `BRIDGE_URL` daemon dan base URL di website kamu. Kunci tetap sama

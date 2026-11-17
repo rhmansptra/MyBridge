@@ -5,69 +5,202 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MyBridge Dashboard</title>
 <style>
+  :root {
+    --bg: #0b0e13; --panel: #12161d; --panel2: #171c25; --line: #1f2630;
+    --text: #e8eaee; --muted: #8b94a3; --faint: #5c6675;
+    --accent: #7c5cff; --green: #34d399; --amber: #fbbf24; --red: #f87171;
+    --radius: 14px;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #0f1115; color: #e6e8eb; }
-  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
-  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-  h1 { font-size: 24px; margin: 0; }
-  .pill { padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #233; color: #9fb3a8; }
-  .pill.live { background: #123524; color: #4ade80; }
-  .pill.down { background: #3a1d1d; color: #f87171; }
-  .muted { color: #9aa3ad; font-size: 13px; }
-  .card { background: #171a21; border: 1px solid #262b36; border-radius: 12px; padding: 16px; margin-top: 16px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .stat b { display: block; font-size: 26px; margin-top: 4px; }
-  .stat span { font-size: 12px; color: #9aa3ad; text-transform: uppercase; letter-spacing: .04em; }
-  label { display: block; font-size: 13px; color: #9aa3ad; margin-bottom: 6px; }
-  input[type=password], input[type=text], textarea { width: 100%; background: #0f1115; border: 1px solid #2c3340; color: #e6e8eb; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 18px 56px; }
+  a { color: var(--accent); }
+
+  /* ---------- header ---------- */
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7c5cff, #4f46e5 60%, #2563eb); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #fff; box-shadow: 0 4px 18px rgba(124,92,255,.35); }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 2px 0 0; }
+  .head-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill { padding: 6px 13px; border-radius: 999px; font-size: 13px; font-weight: 700; background: #1a1f28; color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+  .pill.live { background: #0e2a1e; color: var(--green); border-color: #14532d; }
+  .pill.down { background: #3a1d1d; color: var(--red); border-color: #7f1d1d; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+
+  /* ---------- cards & layout ---------- */
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-top: 16px; }
+  .card h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
+  .card h2 .tag { float: right; font-size: 11.5px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
+  .card-sub { color: var(--muted); font-size: 13px; margin: 5px 0 0; }
+  .duo { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .duo { grid-template-columns: 1fr; } }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat { padding: 14px 16px; }
+  .stat span { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .stat b { display: block; font-size: 27px; margin-top: 5px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .stat small { display: block; font-size: 12px; color: var(--faint); margin-top: 2px; font-weight: 400; }
+
+  /* ---------- quota ---------- */
+  .quota-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .quota-pct { font-size: 44px; font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .quota-pct small { font-size: 20px; font-weight: 700; color: var(--muted); }
+  .plan-badge { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #1e293b; color: #93c5fd; border: 1px solid #334155; }
+  .qbar { height: 12px; border-radius: 999px; background: #1a1f28; border: 1px solid var(--line); overflow: hidden; margin: 14px 0 8px; }
+  .qbar > div { height: 100%; border-radius: 999px; transition: width .6s ease; }
+  .qbar.low > div { background: linear-gradient(90deg, #10b981, #34d399); }
+  .qbar.mid > div { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .qbar.high > div { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .quota-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 14px; }
+  @media (max-width: 520px) { .quota-rows { grid-template-columns: 1fr; } }
+  .qrow { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .qrow span { display: block; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .qrow b { display: block; font-size: 15px; margin-top: 3px; font-weight: 650; }
+  .qrow small { display: block; font-size: 12px; color: var(--faint); margin-top: 1px; }
+  .warn { margin-top: 14px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: #3a1d1d; border: 1px solid #7f1d1d; color: #fca5a5; }
+  .warn.amber { background: #33270a; border-color: #92400e; color: #fcd34d; }
+  .empty-note { color: var(--muted); font-size: 14px; padding: 18px 0 6px; }
+
+  /* ---------- health ---------- */
+  .hrow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .hrow:last-child { border-bottom: 0; padding-bottom: 2px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px rgba(52,211,153,.12); }
+  .dot.green { background: var(--green); }
+  .dot.amber { background: var(--amber); box-shadow: 0 0 0 3px rgba(251,191,36,.12); }
+  .dot.red { background: var(--red); box-shadow: 0 0 0 3px rgba(248,113,113,.12); }
+  .dot.grey { background: var(--faint); box-shadow: none; }
+  .hrow .who { flex: 1; min-width: 0; }
+  .hrow .who b { display: block; font-size: 14.5px; }
+  .hrow .who span { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+  .hrow .val { font-size: 13px; color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hrow .val b { color: var(--text); font-weight: 650; }
+  @media (max-width: 520px) {
+    .hrow { flex-wrap: wrap; }
+    .hrow .val { flex-basis: 100%; text-align: left; padding-left: 22px; white-space: normal; }
+  }
+
+  /* ---------- chart ---------- */
+  .chart { display: flex; align-items: flex-end; gap: 5px; height: 120px; padding: 14px 2px 0; }
+  .bar { flex: 1; min-width: 8px; border-radius: 4px 4px 0 0; background: var(--green); opacity: .85; }
+  .bar.mid { background: var(--amber); }
+  .bar.high { background: var(--red); }
+  .chart-x { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--faint); padding-top: 6px; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; }
+
+  /* ---------- forms ---------- */
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input[type=password], input[type=text], textarea { width: 100%; background: #0b0e13; border: 1px solid #2c3340; color: var(--text); border-radius: 9px; padding: 10px 12px; font-size: 14px; }
+  input:focus, textarea:focus { outline: 2px solid rgba(124,92,255,.5); border-color: var(--accent); }
   textarea { min-height: 72px; resize: vertical; }
-  button { background: #7c5cff; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 9px; padding: 10px 18px; font-size: 14px; font-weight: 650; cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
   button:disabled { opacity: .5; cursor: default; }
   .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
   .row > div { flex: 1; min-width: 200px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #262b36; vertical-align: top; }
-  th { color: #9aa3ad; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-  .ok { color: #4ade80; } .bad { color: #f87171; }
-  pre { background: #0f1115; border: 1px solid #262b36; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  pre { background: #0b0e13; border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px; overflow-x: auto; font-size: 13px; white-space: pre-wrap; word-break: break-word; margin: 12px 0 0; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-  .answer { white-space: pre-wrap; }
   .hidden { display: none; }
+
+  /* ---------- history ---------- */
+  .tbl-wrap { overflow-x: auto; margin: 0 -6px; padding: 0 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 650; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .ok { color: var(--green); font-weight: 650; } .bad { color: var(--red); font-weight: 650; }
+  footer { margin-top: 22px; color: var(--faint); font-size: 12.5px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>MyBridge Dashboard</h1>
-    <span id="livePill" class="pill">mengecek…</span>
-    <span class="muted" id="baseUrl"></span>
+    <div class="logo">
+      <div class="logo-mark">M</div>
+      <div>
+        <h1>MyBridge Dashboard</h1>
+        <p class="sub">API OpenAI-compatible · dijawab worker Muse · 1 endpoint, 5 worker, 5 daemon</p>
+      </div>
+    </div>
+    <div class="head-right">
+      <span id="livePill" class="pill">mengecek…</span>
+      <span class="muted mono" id="baseUrl"></span>
+    </div>
   </header>
-  <p class="muted">Bridge OpenAI-compatible di belakangnya worker Muse. Riwayat di halaman ini hanya sejak server terakhir (re)start.</p>
 
   <div class="card">
-    <label for="key">Client key (disimpan di browser ini saja, tidak dikirim ke mana pun selain server ini)</label>
     <div class="row">
-      <div><input type="password" id="key" placeholder="mb_sk_…" autocomplete="off"></div>
+      <div>
+        <label for="key">Client key — disimpan di browser ini saja, tidak dikirim ke mana pun selain server ini</label>
+        <input type="password" id="key" placeholder="mb_sk_…" autocomplete="off">
+      </div>
       <button id="saveKey">Simpan key</button>
     </div>
-    <p class="muted" id="keyHint">Key ada di config.json (client_keys) / env CLIENT_KEYS di Render.</p>
+  </div>
+
+  <div class="duo">
+    <div class="card">
+      <h2>Kuota Muse <span class="tag" id="quotaUpdated">—</span></h2>
+      <div id="quotaBody"><p class="empty-note">Menunggu laporan kuota pertama dari VM (reporter jalan tiap 15 menit)…</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Kesehatan sistem <span class="tag">live</span></h2>
+      <div style="margin-top:6px">
+        <div class="hrow"><span class="dot grey" id="dotDaemon"></span>
+          <div class="who"><b>Daemon</b><span>Menarik request dari Render ke VM</span></div>
+          <div class="val" id="daemonVal">–</div>
+        </div>
+        <div class="hrow"><span class="dot grey" id="dotWorker"></span>
+          <div class="who"><b>Worker</b><span>Menjawab antrean request</span></div>
+          <div class="val" id="workerVal">–</div>
+        </div>
+        <div class="hrow"><span class="dot grey" id="dotServer"></span>
+          <div class="who"><b>Server</b><span>Uptime &amp; batas jawaban</span></div>
+          <div class="val" id="serverVal">–</div>
+        </div>
+        <div class="hrow"><span class="dot grey" id="dotCap"></span>
+          <div class="who"><b>Kapasitas</b><span>Request barengan sebelum timeout</span></div>
+          <div class="val"><b>±10–12</b> request</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="grid" style="margin-top:16px">
-    <div class="card stat"><span>Total request</span><b id="stTotal">–</b></div>
-    <div class="card stat"><span>Berhasil</span><b id="stOk">–</b></div>
-    <div class="card stat"><span>Timeout</span><b id="stTimeout">–</b></div>
-    <div class="card stat"><span>Rata-rata latensi</span><b id="stLatency">–</b></div>
-    <div class="card stat"><span>Daemon (poll terakhir)</span><b id="stDaemon">–</b></div>
-    <div class="card stat"><span>Worker (jawaban terakhir)</span><b id="stWorker">–</b></div>
+    <div class="card stat"><span>Total request</span><b id="stTotal">–</b><small>sejak server (re)start</small></div>
+    <div class="card stat"><span>Berhasil</span><b id="stOk">–</b><small id="stRate">–</small></div>
+    <div class="card stat"><span>Timeout</span><b id="stTimeout">–</b><small>jawaban &gt; 120 dtk</small></div>
+    <div class="card stat"><span>Req / menit</span><b id="stRpm">–</b><small>60 detik terakhir</small></div>
+    <div class="card stat"><span>Rata-rata latensi</span><b id="stLatency">–</b><small>semua jawaban OK</small></div>
+    <div class="card stat"><span>Median latensi</span><b id="stMedian">–</b><small>setengah jawaban lebih cepat dari ini</small></div>
+    <div class="card stat"><span>P95 latensi</span><b id="stP95">–</b><small>95% jawaban lebih cepat dari ini</small></div>
+    <div class="card stat"><span>Token (50 terakhir)</span><b id="stTokens">–</b><small>prompt + jawaban, perkiraan</small></div>
   </div>
 
   <div class="card">
-    <h2 style="margin:0 0 4px;font-size:17px">Konsol tes</h2>
-    <p class="muted" style="margin:0 0 12px">Kirim pertanyaan lewat API yang sama seperti websitemu. Jawaban datang ~6–15 detik.</p>
-    <label for="q">Pertanyaan</label>
-    <textarea id="q" placeholder="Tulis pertanyaan di sini…">Halo, jawab dengan satu kalimat: apa itu MyBridge?</textarea>
-    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+    <h2>Grafik latensi <span class="tag">20 jawaban terakhir</span></h2>
+    <p class="card-sub">Tiap batang = satu jawaban. Hijau &lt; 15 dtk, kuning 15–30 dtk, merah &gt; 30 dtk. Arahkan kursor ke batang untuk detailnya.</p>
+    <div class="chart" id="chart"><p class="empty-note" style="align-self:center">Belum ada data — isi client key di atas.</p></div>
+    <div class="chart-x"><span id="chartFrom">–</span><span id="chartTo">–</span></div>
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>&lt; 15 dtk</span>
+      <span><i style="background:var(--amber)"></i>15–30 dtk</span>
+      <span><i style="background:var(--red)"></i>&gt; 30 dtk</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Konsol tes</h2>
+    <p class="card-sub">Kirim pertanyaan lewat API yang sama seperti websitemu. Jawaban datang ~10–15 detik (5 worker paralel).</p>
+    <div style="margin-top:12px">
+      <label for="q">Pertanyaan</label>
+      <textarea id="q" placeholder="Tulis pertanyaan di sini…">Halo, jawab dengan satu kalimat: apa itu MyBridge?</textarea>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
       <button id="send">Kirim</button>
       <span class="muted" id="sendStatus"></span>
     </div>
@@ -75,9 +208,9 @@
   </div>
 
   <div class="card">
-    <h2 style="margin:0 0 4px;font-size:17px">Riwayat request (50 terakhir)</h2>
-    <p class="muted" style="margin:0 0 12px">Otomatis refresh tiap 5 detik.</p>
-    <div style="overflow-x:auto">
+    <h2>Riwayat request <span class="tag">50 terakhir</span></h2>
+    <p class="card-sub">Otomatis refresh tiap 5 detik. Riwayat di sini hanya sejak server terakhir (re)start.</p>
+    <div class="tbl-wrap" style="margin-top:8px">
     <table>
       <thead><tr><th>Waktu</th><th>Pertanyaan</th><th>Jawaban</th><th>Latensi</th><th>Token</th><th>Status</th></tr></thead>
       <tbody id="history"><tr><td colspan="6" class="muted">Belum ada data — isi client key di atas.</td></tr></tbody>
@@ -86,14 +219,17 @@
   </div>
 
   <div class="card">
-    <h2 style="margin:0 0 8px;font-size:17px">Info API</h2>
-    <p style="margin:4px 0">Base URL: <code id="apiBase"></code></p>
+    <h2>Info API</h2>
+    <p style="margin:8px 0 4px">Base URL: <code id="apiBase"></code></p>
     <p style="margin:4px 0">Model: <code>muse</code> (chat). <code>muse-image</code> dan <code>muse-video</code> hanya tercantum di /v1/models, belum diimplementasikan.</p>
     <pre><code>curl -s <span class="apiBase"></span>/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ISI_CLIENT_KEY_KAMU" \
   -d '{"model":"muse","messages":[{"role":"user","content":"Halo"}]}'</code></pre>
+    <p class="muted" style="margin:10px 0 0">Jawaban diambil dari <code>data.choices[0].message.content</code>. Latensi tipikal 10–15 detik — tampilkan status loading di websitemu. Statistik &amp; kuota di halaman ini diambil dari <code>GET /v1/stats</code> (butuh client key).</p>
   </div>
+
+  <footer>MyBridge · 1 API, 5 worker, 5 daemon · kuota diperbarui tiap 15 menit dari VM · statistik hilang kalau server restart</footer>
 </div>
 <script>
 const base = location.origin;
@@ -116,11 +252,51 @@ function ago(s) {
   return Math.round(s / 3600) + ' jam lalu';
 }
 function fmtTime(ts) {
-  const d = new Date(ts * 1000);
-  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function fmtUptime(s) {
+  if (s >= 86400) return Math.round(s / 86400) + ' hari';
+  if (s >= 3600) return (s / 3600).toFixed(1) + ' jam';
+  return Math.round(s / 60) + ' mnt';
 }
 function esc(s) {
   return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function setDot(id, cls) { document.getElementById(id).className = 'dot ' + cls; }
+function countdown(resetAt) {
+  const diff = new Date(resetAt).getTime() - Date.now();
+  if (isNaN(diff)) return '—';
+  if (diff <= 0) return 'sudah reset — menunggu laporan baru';
+  const d = Math.floor(diff / 86400000), h = Math.floor(diff % 86400000 / 3600000), m = Math.floor(diff % 3600000 / 60000);
+  if (d > 0) return d + ' hari ' + h + ' jam lagi';
+  if (h > 0) return h + ' jam ' + m + ' mnt lagi';
+  return m + ' mnt lagi';
+}
+function renderQuota(q, updatedAgo) {
+  const el = document.getElementById('quotaBody');
+  const tag = document.getElementById('quotaUpdated');
+  if (!q || q.used_pct === null || q.used_pct === undefined) {
+    el.innerHTML = '<p class="empty-note">Kuota belum dilaporkan — reporter jalan tiap 15 menit, laporan pertama segera muncul.</p>';
+    tag.textContent = '—';
+    return;
+  }
+  const used = q.used_pct, left = 100 - used;
+  const cls = used >= 80 ? 'high' : (used >= 50 ? 'mid' : 'low');
+  const resetDate = new Date(q.reset_at);
+  const resetStr = isNaN(resetDate) ? '—' : resetDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + resetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  let warn = '';
+  if (used >= 80) warn = '<div class="warn">Kuota hampir habis — bridge akan berhenti menjawab sampai reset. Hemat pemakaian sampai ' + esc(resetStr) + '.</div>';
+  else if (used >= 50) warn = '<div class="warn amber">Kuota sudah lewat setengah. Pemakaian bridge ikut memakai kuota ini — pantau sebelum reset.</div>';
+  el.innerHTML =
+    '<div class="quota-top" style="margin-top:10px"><div class="quota-pct">' + used + '<small>%</small></div>' +
+    '<span class="plan-badge">Paket ' + esc(q.plan || 'Free') + '</span>' +
+    '<span class="muted">terpakai · sisa <b style="color:var(--text)">' + left + '%</b></span></div>' +
+    '<div class="qbar ' + cls + '"><div style="width:' + used + '%"></div></div>' +
+    '<div class="quota-rows">' +
+    '<div class="qrow"><span>Reset kuota</span><b>' + esc(resetStr) + '</b><small>' + esc(countdown(q.reset_at)) + '</small></div>' +
+    '<div class="qrow"><span>Token tambahan</span><b>' + (q.additional_used_pct === null || q.additional_used_pct === undefined ? '–' : q.additional_used_pct + '% terpakai') + '</b><small>' + (q.additional_tokens_left ? esc(q.additional_tokens_left) + ' token tersisa' : '—') + '</small></div>' +
+    '</div>' + warn;
+  tag.textContent = updatedAgo === null || updatedAgo === undefined ? '—' : 'diperbarui ' + ago(updatedAgo);
 }
 async function loadStats() {
   const k = key();
@@ -130,20 +306,54 @@ async function loadStats() {
     if (r.status === 401) { pill.textContent = 'key salah'; pill.className = 'pill down'; return; }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
-    pill.textContent = '● LIVE · uptime ' + (d.uptime_secs >= 3600 ? Math.round(d.uptime_secs / 3600) + ' jam' : Math.round(d.uptime_secs / 60) + ' mnt');
+    pill.textContent = '● LIVE · uptime ' + fmtUptime(d.uptime_secs);
     pill.className = 'pill live';
+    // kuota
+    renderQuota(d.quota, d.quota_updated_ago);
+    // kesehatan
+    const w = d.worker || {};
+    setDot('dotDaemon', (w.last_pending_ago !== null && w.last_pending_ago !== undefined && w.last_pending_ago < 10) ? 'green' : 'red');
+    document.getElementById('daemonVal').innerHTML = '<b>5 proses</b> · poll ' + ago(w.last_pending_ago);
+    const workerOk = (w.last_done_ago !== null && w.last_done_ago !== undefined && w.last_done_ago < 300) || d.total === 0;
+    setDot('dotWorker', workerOk ? 'green' : 'amber');
+    document.getElementById('workerVal').innerHTML = '<b>5 worker</b> · jawaban ' + ago(w.last_done_ago);
+    setDot('dotServer', 'green');
+    document.getElementById('serverVal').innerHTML = '<b>' + fmtUptime(d.uptime_secs) + '</b> · timeout 120 dtk';
+    setDot('dotCap', 'green');
+    // statistik
     document.getElementById('stTotal').textContent = d.total;
     document.getElementById('stOk').textContent = d.ok;
+    document.getElementById('stRate').textContent = d.success_rate_pct === null ? '–' : d.success_rate_pct + '% berhasil';
     document.getElementById('stTimeout').textContent = d.timeout;
+    document.getElementById('stRpm').textContent = d.rpm_last_60s;
     document.getElementById('stLatency').textContent = d.avg_latency_secs === null ? '–' : d.avg_latency_secs + ' dtk';
-    const w = d.worker || {};
-    document.getElementById('stDaemon').textContent = ago(w.last_pending_ago);
-    document.getElementById('stWorker').textContent = ago(w.last_done_ago);
+    document.getElementById('stMedian').textContent = d.median_latency_secs === null ? '–' : d.median_latency_secs + ' dtk';
+    document.getElementById('stP95').textContent = d.p95_latency_secs === null ? '–' : d.p95_latency_secs + ' dtk';
+    const toks = (d.recent || []).reduce((a, x) => a + (x.prompt_tokens || 0) + (x.completion_tokens || 0), 0);
+    document.getElementById('stTokens').textContent = (d.recent && d.recent.length) ? toks.toLocaleString('id-ID') : '–';
+    // grafik latensi
+    const oks = (d.recent || []).filter(x => x.status === 'ok' && x.latency !== null).slice(0, 20).reverse();
+    const chart = document.getElementById('chart');
+    if (!oks.length) {
+      chart.innerHTML = '<p class="empty-note" style="align-self:center">Belum ada jawaban OK sejak server (re)start.</p>';
+      document.getElementById('chartFrom').textContent = '–';
+      document.getElementById('chartTo').textContent = '–';
+    } else {
+      const mx = Math.max.apply(null, oks.map(x => x.latency));
+      chart.innerHTML = oks.map(x => {
+        const h = Math.max(4, Math.round(x.latency / mx * 100));
+        const c = x.latency < 15 ? '' : (x.latency <= 30 ? ' mid' : ' high');
+        return '<div class="bar' + c + '" style="height:' + h + '%" title="' + fmtTime(x.received_at) + ' · ' + x.latency + ' dtk · ' + esc(x.question.slice(0, 60)) + '"></div>';
+      }).join('');
+      document.getElementById('chartFrom').textContent = fmtTime(oks[0].received_at);
+      document.getElementById('chartTo').textContent = fmtTime(oks[oks.length - 1].received_at);
+    }
+    // riwayat
     const tb = document.getElementById('history');
     if (!d.recent || !d.recent.length) {
       tb.innerHTML = '<tr><td colspan="6" class="muted">Belum ada request sejak server (re)start.</td></tr>';
     } else {
-      tb.innerHTML = d.recent.map(x => '<tr><td>' + fmtTime(x.received_at) + '</td><td>' + esc(x.question) + '</td><td>' + esc(x.answer) + '</td><td>' + (x.latency === null ? '–' : x.latency + ' dtk') + '</td><td>' + (x.prompt_tokens + x.completion_tokens) + '</td><td class="' + (x.status === 'ok' ? 'ok' : 'bad') + '">' + x.status + '</td></tr>').join('');
+      tb.innerHTML = d.recent.map(x => '<tr><td class="num">' + fmtTime(x.received_at) + '</td><td><div class="clip">' + esc(x.question) + '</div></td><td><div class="clip">' + esc(x.answer) + '</div></td><td class="num">' + (x.latency === null ? '–' : x.latency + ' dtk') + '</td><td class="num">' + ((x.prompt_tokens || 0) + (x.completion_tokens || 0)) + '</td><td class="' + (x.status === 'ok' ? 'ok' : 'bad') + '">' + x.status + '</td></tr>').join('');
     }
   } catch (e) {
     pill.textContent = 'server tidak terjangkau';
@@ -158,7 +368,7 @@ document.getElementById('send').onclick = async () => {
   if (!k) { st.textContent = 'Isi client key dulu di atas.'; return; }
   const q = document.getElementById('q').value.trim();
   if (!q) { st.textContent = 'Tulis dulu pertanyaannya.'; return; }
-  btn.disabled = true; st.textContent = 'Mengirim… (tunggu ~6–15 detik)';
+  btn.disabled = true; st.textContent = 'Mengirim… (tunggu ~10–15 detik)';
   out.classList.add('hidden');
   const t0 = performance.now();
   try {

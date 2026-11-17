@@ -48,7 +48,8 @@ def _load_config():
     # jangan pernah masuk ke repo, isi lewat env var di dashboard host).
     # Render mengisi PORT sendiri; CLIENT_KEYS dipisah koma.
     return {
-        "host": os.environ.get("BRIDGE_HOST", cfg.get("host", "127.0.0.1")),
+        "host": os.environ.get(
+            "HOST", os.environ.get("BRIDGE_HOST", cfg.get("host", "127.0.0.1"))),
         "port": int(os.environ.get(
             "PORT", os.environ.get("BRIDGE_PORT", cfg.get("port", 8765)))),
         "client_keys": [k for k in os.environ.get("CLIENT_KEYS", "").split(",")

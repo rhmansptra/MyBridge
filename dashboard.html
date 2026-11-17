@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyBridge Dashboard</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #0f1115; color: #e6e8eb; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  h1 { font-size: 24px; margin: 0; }
+  .pill { padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #233; color: #9fb3a8; }
+  .pill.live { background: #123524; color: #4ade80; }
+  .pill.down { background: #3a1d1d; color: #f87171; }
+  .muted { color: #9aa3ad; font-size: 13px; }
+  .card { background: #171a21; border: 1px solid #262b36; border-radius: 12px; padding: 16px; margin-top: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat b { display: block; font-size: 26px; margin-top: 4px; }
+  .stat span { font-size: 12px; color: #9aa3ad; text-transform: uppercase; letter-spacing: .04em; }
+  label { display: block; font-size: 13px; color: #9aa3ad; margin-bottom: 6px; }
+  input[type=password], input[type=text], textarea { width: 100%; background: #0f1115; border: 1px solid #2c3340; color: #e6e8eb; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  textarea { min-height: 72px; resize: vertical; }
+  button { background: #7c5cff; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 200px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #262b36; vertical-align: top; }
+  th { color: #9aa3ad; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .ok { color: #4ade80; } .bad { color: #f87171; }
+  pre { background: #0f1115; border: 1px solid #262b36; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .answer { white-space: pre-wrap; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MyBridge Dashboard</h1>
+    <span id="livePill" class="pill">mengecek…</span>
+    <span class="muted" id="baseUrl"></span>
+  </header>
+  <p class="muted">Bridge OpenAI-compatible di belakangnya worker Muse. Riwayat di halaman ini hanya sejak server terakhir (re)start.</p>
+
+  <div class="card">
+    <label for="key">Client key (disimpan di browser ini saja, tidak dikirim ke mana pun selain server ini)</label>
+    <div class="row">
+      <div><input type="password" id="key" placeholder="mb_sk_…" autocomplete="off"></div>
+      <button id="saveKey">Simpan key</button>
+    </div>
+    <p class="muted" id="keyHint">Key ada di config.json (client_keys) / env CLIENT_KEYS di Render.</p>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <div class="card stat"><span>Total request</span><b id="stTotal">–</b></div>
+    <div class="card stat"><span>Berhasil</span><b id="stOk">–</b></div>
+    <div class="card stat"><span>Timeout</span><b id="stTimeout">–</b></div>
+    <div class="card stat"><span>Rata-rata latensi</span><b id="stLatency">–</b></div>
+    <div class="card stat"><span>Daemon (poll terakhir)</span><b id="stDaemon">–</b></div>
+    <div class="card stat"><span>Worker (jawaban terakhir)</span><b id="stWorker">–</b></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 4px;font-size:17px">Konsol tes</h2>
+    <p class="muted" style="margin:0 0 12px">Kirim pertanyaan lewat API yang sama seperti websitemu. Jawaban datang ~6–15 detik.</p>
+    <label for="q">Pertanyaan</label>
+    <textarea id="q" placeholder="Tulis pertanyaan di sini…">Halo, jawab dengan satu kalimat: apa itu MyBridge?</textarea>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <button id="send">Kirim</button>
+      <span class="muted" id="sendStatus"></span>
+    </div>
+    <pre id="testOut" class="hidden"></pre>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 4px;font-size:17px">Riwayat request (50 terakhir)</h2>
+    <p class="muted" style="margin:0 0 12px">Otomatis refresh tiap 5 detik.</p>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Waktu</th><th>Pertanyaan</th><th>Jawaban</th><th>Latensi</th><th>Token</th><th>Status</th></tr></thead>
+      <tbody id="history"><tr><td colspan="6" class="muted">Belum ada data — isi client key di atas.</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px;font-size:17px">Info API</h2>
+    <p style="margin:4px 0">Base URL: <code id="apiBase"></code></p>
+    <p style="margin:4px 0">Model: <code>muse</code> (chat). <code>muse-image</code> dan <code>muse-video</code> hanya tercantum di /v1/models, belum diimplementasikan.</p>
+    <pre><code>curl -s <span class="apiBase"></span>/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ISI_CLIENT_KEY_KAMU" \
+  -d '{"model":"muse","messages":[{"role":"user","content":"Halo"}]}'</code></pre>
+  </div>
+</div>
+<script>
+const base = location.origin;
+document.getElementById('baseUrl').textContent = base;
+document.getElementById('apiBase').textContent = base + '/v1';
+document.querySelectorAll('.apiBase').forEach(e => e.textContent = base);
+
+const keyInput = document.getElementById('key');
+const pill = document.getElementById('livePill');
+keyInput.value = sessionStorage.getItem('mb_key') || '';
+document.getElementById('saveKey').onclick = () => {
+  sessionStorage.setItem('mb_key', keyInput.value.trim());
+  loadStats();
+};
+function key() { return keyInput.value.trim(); }
+function ago(s) {
+  if (s === null || s === undefined) return 'belum pernah';
+  if (s < 60) return Math.round(s) + ' dtk lalu';
+  if (s < 3600) return Math.round(s / 60) + ' mnt lalu';
+  return Math.round(s / 3600) + ' jam lalu';
+}
+function fmtTime(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function esc(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+async function loadStats() {
+  const k = key();
+  if (!k) { pill.textContent = 'isi client key dulu'; pill.className = 'pill'; return; }
+  try {
+    const r = await fetch(base + '/v1/stats', { headers: { 'Authorization': 'Bearer ' + k } });
+    if (r.status === 401) { pill.textContent = 'key salah'; pill.className = 'pill down'; return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    pill.textContent = '● LIVE · uptime ' + (d.uptime_secs >= 3600 ? Math.round(d.uptime_secs / 3600) + ' jam' : Math.round(d.uptime_secs / 60) + ' mnt');
+    pill.className = 'pill live';
+    document.getElementById('stTotal').textContent = d.total;
+    document.getElementById('stOk').textContent = d.ok;
+    document.getElementById('stTimeout').textContent = d.timeout;
+    document.getElementById('stLatency').textContent = d.avg_latency_secs === null ? '–' : d.avg_latency_secs + ' dtk';
+    const w = d.worker || {};
+    document.getElementById('stDaemon').textContent = ago(w.last_pending_ago);
+    document.getElementById('stWorker').textContent = ago(w.last_done_ago);
+    const tb = document.getElementById('history');
+    if (!d.recent || !d.recent.length) {
+      tb.innerHTML = '<tr><td colspan="6" class="muted">Belum ada request sejak server (re)start.</td></tr>';
+    } else {
+      tb.innerHTML = d.recent.map(x => '<tr><td>' + fmtTime(x.received_at) + '</td><td>' + esc(x.question) + '</td><td>' + esc(x.answer) + '</td><td>' + (x.latency === null ? '–' : x.latency + ' dtk') + '</td><td>' + (x.prompt_tokens + x.completion_tokens) + '</td><td class="' + (x.status === 'ok' ? 'ok' : 'bad') + '">' + x.status + '</td></tr>').join('');
+    }
+  } catch (e) {
+    pill.textContent = 'server tidak terjangkau';
+    pill.className = 'pill down';
+  }
+}
+document.getElementById('send').onclick = async () => {
+  const k = key();
+  const out = document.getElementById('testOut');
+  const st = document.getElementById('sendStatus');
+  const btn = document.getElementById('send');
+  if (!k) { st.textContent = 'Isi client key dulu di atas.'; return; }
+  const q = document.getElementById('q').value.trim();
+  if (!q) { st.textContent = 'Tulis dulu pertanyaannya.'; return; }
+  btn.disabled = true; st.textContent = 'Mengirim… (tunggu ~6–15 detik)';
+  out.classList.add('hidden');
+  const t0 = performance.now();
+  try {
+    const r = await fetch(base + '/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + k },
+      body: JSON.stringify({ model: 'muse', messages: [{ role: 'user', content: q }] })
+    });
+    const d = await r.json();
+    const dt = ((performance.now() - t0) / 1000).toFixed(1);
+    if (!r.ok) { out.textContent = 'Error ' + r.status + ': ' + (d.error && d.error.message || JSON.stringify(d)); }
+    else { out.textContent = d.choices[0].message.content; }
+    out.classList.remove('hidden');
+    st.textContent = 'Selesai dalam ' + dt + ' detik.';
+    loadStats();
+  } catch (e) {
+    st.textContent = 'Gagal: ' + e.message;
+  } finally { btn.disabled = false; }
+};
+loadStats();
+setInterval(loadStats, 5000);
+</script>
+</body>
+</html>

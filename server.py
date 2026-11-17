@@ -23,11 +23,15 @@ Endpoint:
   GET  /v1/worker/pending          -> daftar request belum diklaim
   POST /v1/worker/claim   {"id"}   -> klaim satu request (rename .claimed)
   POST /v1/worker/done    {"id","content"} -> tulis jawaban
+  GET  /v1/stats                    -> statistik + riwayat (butuh client key)
+  GET  /dashboard                  -> halaman dashboard (HTML)
 """
 import json
 import os
+import threading
 import time
 import uuid
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
@@ -66,6 +70,34 @@ PORT = CONFIG["port"]
 CLIENT_KEYS = set(CONFIG["client_keys"])
 WORKER_KEY = CONFIG["worker_key"]
 ANSWER_TIMEOUT = CONFIG["answer_timeout_secs"]
+
+# Statistik dashboard (in-memory; hilang kalau server restart — riwayat
+# panjang tetap ada di file answers/ di VM lokal).
+STARTED_AT = time.time()
+_STATS_LOCK = threading.Lock()
+_RECENT = deque(maxlen=50)  # {id, received_at, question, answer, latency, model, pt, ct, status}
+_TOTALS = {"total": 0, "ok": 0, "timeout": 0}
+_WORKER = {"last_heartbeat": 0.0, "last_pending": 0.0,
+           "last_claim": 0.0, "last_done": 0.0}
+
+
+def _record(rid, req, answer, latency, pt, ct, status):
+    with _STATS_LOCK:
+        _TOTALS["total"] += 1
+        if status == "ok":
+            _TOTALS["ok"] += 1
+        elif status == "timeout":
+            _TOTALS["timeout"] += 1
+        _RECENT.append({
+            "id": rid,
+            "received_at": req.get("received_at", time.time()),
+            "question": (req.get("text", "") or "")[:120],
+            "answer": (answer or "")[:200],
+            "latency": round(latency, 2) if latency is not None else None,
+            "model": req.get("model", "muse"),
+            "prompt_tokens": pt, "completion_tokens": ct,
+            "status": status,
+        })
 
 
 def auth_ok(handler, keys):
@@ -124,6 +156,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/v1/worker/pending":
             if not auth_ok(self, {WORKER_KEY}):
                 return self._err(401, "invalid worker key")
+            _WORKER["last_pending"] = time.time()
             items = []
             for fn in sorted(os.listdir(REQ_DIR)):
                 if not fn.endswith(".json"):
@@ -135,6 +168,39 @@ class H(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             return self._json(200, {"pending": items, "worker_online": True})
+        if p == "/v1/stats":
+            if not auth_ok(self, CLIENT_KEYS | {WORKER_KEY}):
+                return self._err(401, "invalid api key")
+            with _STATS_LOCK:
+                recent = list(_RECENT)
+                total = _TOTALS["total"]
+                ok = _TOTALS["ok"]
+                timeout = _TOTALS["timeout"]
+            lats = [r["latency"] for r in recent
+                    if r["status"] == "ok" and r["latency"] is not None]
+            now = time.time()
+
+            def _ago(ts):
+                return round(now - ts, 1) if ts else None
+
+            return self._json(200, {
+                "uptime_secs": round(now - STARTED_AT, 1),
+                "total": total, "ok": ok, "timeout": timeout,
+                "avg_latency_secs": round(sum(lats) / len(lats), 2) if lats else None,
+                "worker": {
+                    "last_heartbeat_ago": _ago(_WORKER["last_heartbeat"]),
+                    "last_pending_ago": _ago(_WORKER["last_pending"]),
+                    "last_claim_ago": _ago(_WORKER["last_claim"]),
+                    "last_done_ago": _ago(_WORKER["last_done"]),
+                },
+                "recent": list(reversed(recent)),
+            })
+        if p == "/dashboard":
+            try:
+                with open(os.path.join(BASE, "dashboard.html"), "rb") as f:
+                    return self._send(200, f.read(), ctype="text/html; charset=utf-8")
+            except OSError:
+                return self._err(404, "dashboard not found")
         return self._err(404, "not found")
 
     def do_POST(self):
@@ -188,6 +254,7 @@ class H(BaseHTTPRequestHandler):
                     os.remove(os.path.join(REQ_DIR, rid + ".json"))
                 except OSError:
                     pass
+                _record(rid, req, "", None, len(text.split()), 0, "timeout")
                 return self._err(504, "worker timeout: no answer in %ss" % ANSWER_TIMEOUT)
             # bersihkan antrean supaya watcher run berikutnya tidak menjawab
             # ulang request basi
@@ -200,6 +267,8 @@ class H(BaseHTTPRequestHandler):
             created = int(time.time())
             pt = len(text.split())
             ct = len(content.split())
+            _record(rid, req, content, time.time() - req["received_at"],
+                    pt, ct, "ok")
             if body.get("stream"):
                 # Streaming "satu chunk": agent menulis jawaban utuh dulu,
                 # jadi SSE di sini mengirim seluruh isi sekaligus lalu DONE.
@@ -225,11 +294,13 @@ class H(BaseHTTPRequestHandler):
         if p == "/v1/worker/heartbeat":
             if not auth_ok(self, {WORKER_KEY}):
                 return self._err(401, "invalid worker key")
+            _WORKER["last_heartbeat"] = time.time()
             return self._json(200, {"ok": True, "ts": time.time()})
 
         if p == "/v1/worker/claim":
             if not auth_ok(self, {WORKER_KEY}):
                 return self._err(401, "invalid worker key")
+            _WORKER["last_claim"] = time.time()
             rid = body.get("id")
             rp = os.path.join(REQ_DIR, rid + ".json") if rid else ""
             if not rid or not os.path.exists(rp):
@@ -248,6 +319,7 @@ class H(BaseHTTPRequestHandler):
                 content = content.get("text", "") or json.dumps(content)
             if not rid:
                 return self._err(400, "missing id")
+            _WORKER["last_done"] = time.time()
             with open(os.path.join(ANS_DIR, rid + ".json"), "w") as f:
                 json.dump({"id": rid, "answer": content,
                            "answered_at": time.time()}, f)

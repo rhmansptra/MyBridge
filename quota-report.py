@@ -8,7 +8,7 @@ Contoh output CLI yang diparse:
   Usage: 51% of free weekly limit.
   Weekly limit resets Nov 23 at 10:59 PM +07
   Additional tokens: 50% used (502M tokens left)
-Jalankan tiap 15 menit via cron mybridge-quota-reporter.
+Jalankan tiap 5 menit via cron mybridge-quota-reporter.
 """
 import json
 import os

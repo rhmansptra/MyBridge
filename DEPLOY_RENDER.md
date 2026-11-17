@@ -62,7 +62,7 @@ membaca statistik — riwayat request bersifat pribadi, jangan bagikan
 key-nya. Statistik in-memory: hilang kalau server Render restart;
 riwayat panjang tetap ada di file `answers/` di VM lokal. Endpoint
 kuota: `POST /v1/worker/quota` (worker key) — dikirim reporter
-`quota-report.py` dari VM (cron tiap 15 menit).
+`quota-report.py` dari VM (cron tiap 5 menit).
 
 Server ini satu file Python portabel. Yang perlu diubah hanya
 `BRIDGE_URL` daemon dan base URL di website kamu. Kunci tetap sama

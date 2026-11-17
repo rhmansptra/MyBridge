@@ -1,0 +1,6 @@
+# Jangan pernah commit file-file ini (berisi kunci rahasia / data antrean).
+config.json
+*.log
+__pycache__/
+requests/
+answers/

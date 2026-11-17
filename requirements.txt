@@ -1,0 +1,2 @@
+# MyBridge tidak butuh dependency eksternal (Python stdlib saja).
+# File ini sengaja kosong supaya build di Render tetap jalan.

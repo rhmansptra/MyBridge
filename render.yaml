@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: mybridge
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: CLIENT_KEYS
+        sync: false
+      - key: WORKER_KEY
+        sync: false

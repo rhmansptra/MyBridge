@@ -49,7 +49,15 @@ free 5 GB/bulan; poll daemon ~0,4 GB/bulan, aman.
    ```
    Jawaban ~6-8 detik (poll daemon 2 detik + worker ~5 detik).
 
-## Kalau nanti mau pindah host
+## Dashboard
+
+Setelah deploy, dashboard ada di `https://mybridge-xxxx.onrender.com/dashboard`:
+status server/worker/daemon, total request, rata-rata latensi, riwayat
+50 request terakhir, konsol tes chat, dan info API. Dashboard minta
+client key sekali (disimpan di browser saja) untuk membaca statistik —
+riwayat request bersifat pribadi, jangan bagikan key-nya. Statistik
+in-memory: hilang kalau server Render restart; riwayat panjang tetap
+ada di file `answers/` di VM lokal.
 
 Server ini satu file Python portabel. Yang perlu diubah hanya
 `BRIDGE_URL` daemon dan base URL di website kamu. Kunci tetap sama

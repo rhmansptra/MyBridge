@@ -132,8 +132,14 @@ def main():
             except Exception as e:
                 print("done %s gagal: %r" % (rid, e), flush=True)
                 continue
-            # bersihkan antrean lokal supaya tidak dijawab ulang
-            for p in (local_req, os.path.join(ANS_DIR, rid + ".json"),
+            # bersihkan antrean lokal supaya tidak dijawab ulang.
+            # PENTING: worker mengklaim dengan rename .json -> .claimed, jadi
+            # local_req (.json) sudah tidak ada saat ini — yang harus dihapus
+            # adalah .claimed-nya. Kalau .claimed dibiarkan, reaper akan
+            # membangkitkannya jadi .json dan request yang sudah terjawab
+            # dijawab ulang terus-menerus (kuota terbuang).
+            for p in (local_req, os.path.join(REQ_DIR, rid + ".claimed"),
+                      os.path.join(ANS_DIR, rid + ".json"),
                       os.path.join(ANS_DIR, rid + ".txt")):
                 try:
                     os.remove(p)
